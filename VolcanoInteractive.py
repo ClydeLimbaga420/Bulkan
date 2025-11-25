@@ -82,16 +82,16 @@ def compute_ash_map(radius, wind_dir, wind_speed, max_radius):
 
 # ----------------------- Figure & UI -----------------------
 plt.ion()
-fig = plt.figure(figsize=(12,10), facecolor='#ebebeb')
+fig = plt.figure(figsize=(12,10), facecolor='#a9a9a9')  # gray background
 fig.suptitle("🌋 Taal Volcano Eruption Hazard Simulation", y=0.03, fontsize=16, fontweight='bold')
-ax_map = fig.add_axes([0.05,0.12,0.7,0.82], facecolor='white')
+ax_map = fig.add_axes([0.05,0.12,0.7,0.82], facecolor='#a9a9a9')  # gray background
 
 colors = ["#fef0d9","#fc8d59","#d7301f"]
 cmap_damage = LinearSegmentedColormap.from_list("DamageCmap", colors)
 ash_cmap = plt.get_cmap('Greys_r')
 
 # --- Controls ---
-control_bg = '#f5f5f5'
+control_bg = '#a9a9a9'  # match figure background
 ax_alert = fig.add_axes([0.78,0.80,0.2,0.15], facecolor=control_bg)
 ax_wind_speed = fig.add_axes([0.78,0.73,0.18,0.035], facecolor=control_bg)
 ax_wind_dir = fig.add_axes([0.78,0.68,0.18,0.035], facecolor=control_bg)
@@ -125,7 +125,8 @@ bg_img_artist = ax_map.imshow(map_img, extent=[x_min,x_max,y_min,y_max], zorder=
 dmg_artist = ax_map.imshow(np.zeros_like(XX), extent=[x_min,x_max,y_min,y_max], origin='lower', cmap=cmap_damage, alpha=0.85, vmin=0, vmax=1, zorder=3)
 ash_artist = ax_map.imshow(np.zeros_like(XX), extent=[x_min,x_max,y_min,y_max], origin='lower', cmap=ash_cmap, alpha=0.65, vmin=0, vmax=1, zorder=4)
 volcano_marker, = ax_map.plot(volcano_x,volcano_y,'^',markersize=16, markerfacecolor=settings["colors"][1], markeredgecolor='white', zorder=6)
-info_text = ax_map.text(x_min+2, y_max-8, '', fontsize=10, color='black', bbox=dict(facecolor='white', alpha=0.95, boxstyle='round,pad=0.6', linewidth=1.2), zorder=7)
+info_text = ax_map.text(x_min+2, y_max-8, '', fontsize=10, color='black', 
+                        bbox=dict(facecolor='#f0f0f0', alpha=0.95, boxstyle='round,pad=0.6', linewidth=1.2), zorder=7)
 impact_rings = [plt.Circle((volcano_x,volcano_y),1,color=settings["colors"][0], fill=False, linewidth=2.0, linestyle='--', alpha=0.55, zorder=2) for _ in settings["colors"]]
 for ring in impact_rings: ax_map.add_patch(ring)
 
@@ -135,20 +136,19 @@ def update_plot():
     settings = ERUPTION_COLORS[scale]
     max_radius, eq_mag_num = settings["max_radius"], settings["eq_mag_num"]
 
-    # Damage
     dmg = compute_damage_map(radius, scale, eq_mag_num, max_radius) if show_damage else np.zeros_like(XX)
     dmg_artist.set_data(np.ma.masked_where(dmg <= 0.001, dmg))
-    # Ash
+
     ash = compute_ash_map(radius, slider_dir.val, slider_speed.val, max_radius)*slider_ash.val if show_ash else np.zeros_like(XX)
     ash_artist.set_data(np.ma.masked_where(ash<=0.01,ash))
-    # Volcano marker
+
     volcano_marker.set_markerfacecolor(settings["colors"][1])
-    # Rings
+
     for i, ring in enumerate(impact_rings):
         r = radius - i*5
         ring.set_radius(r if show_impact and r>0 else 0)
         ring.set_edgecolor(settings["colors"][i])
-    # Info
+
     info_text.set_text(
         f"Alert Level {scale}: {settings['label']}\n"
         f"Radius: {radius:.1f}/{max_radius} km\n"
@@ -157,7 +157,6 @@ def update_plot():
         f"{settings['desc']}"
     )
     fig.canvas.draw_idle()
-    # Update button labels ON/OFF
     btn_ash.label.set_text(f"Ash Plume ({'ON' if show_ash else 'OFF'})")
     btn_damage.label.set_text(f"Damage Map ({'ON' if show_damage else 'OFF'})")
     btn_rings.label.set_text(f"Impact Rings ({'ON' if show_impact else 'OFF'})")
