@@ -17,19 +17,19 @@ volcano_x, volcano_y = 2, -1
 ERUPTION_COLORS = {
     0: {"label": "Normal", "max_radius": 0, "growth_rate": 0,
         "colors": ['#38761d', '#6aa84f'], "desc": "No eruption; normal background activity.",
-        "eq_mag_num": 0.0},
+        "eq_mag_str": "0.0", "eq_mag_num": 0.0},
     1: {"label": "Abnormal", "max_radius": 5, "growth_rate": 1,
         "colors": ['#f1c232', '#f6b26b'], "desc": "Increased unrest; minor steam and gas emissions.",
-        "eq_mag_num": 1.5},
+        "eq_mag_str": "1.0–2.0", "eq_mag_num": 1.5},
     2: {"label": "Increasing Unrest", "max_radius": 12, "growth_rate": 1.5,
         "colors": ['#cc0000', '#ff6600'], "desc": "Possible minor eruptions; ashfall local.",
-        "eq_mag_num": 3.0},
+        "eq_mag_str": "2.0–3.5", "eq_mag_num": 3.0},
     3: {"label": "Minor Eruption", "max_radius": 25, "growth_rate": 2,
         "colors": ['#800000', '#cc0000'], "desc": "Phreatomagmatic eruption; widespread ashfall.",
-        "eq_mag_num": 4.5},
+        "eq_mag_str": "3.5–5.0", "eq_mag_num": 4.5},
     4: {"label": "Hazardous Eruption", "max_radius": 50, "growth_rate": 3,
         "colors": ['#330000', '#800000'], "desc": "Plinian-style eruption; heavy ashfall.",
-        "eq_mag_num": 6.0}
+        "eq_mag_str": "5.0+", "eq_mag_num": 6.0}
 }
 
 # ----------------------- Map Setup -----------------------
@@ -109,9 +109,9 @@ slider_dir = Slider(ax_wind_dir, 'Wind Dir (°)', 0,360,valinit=90,valstep=1)
 slider_ash = Slider(ax_ash_strength,'Ash Scale',0.1,2.0,valinit=1.0)
 
 btn_reset = Button(ax_btn_reset,'RESET SIMULATION',color='#dc143c',hovercolor='#ff6347')
-btn_ash = Button(ax_btn_ash,'Ash Plume (ON)',color='#90ee90',hovercolor='#c0c0c0')
-btn_damage = Button(ax_btn_damage,'Damage Map (ON)',color='#90ee90',hovercolor='#c0c0c0')
-btn_rings = Button(ax_btn_rings,'Impact Rings (ON)',color='#90ee90',hovercolor='#c0c0c0')
+btn_ash = Button(ax_btn_ash,'Ash Plume (ON)',color='#dcdcdc',hovercolor='#c0c0c0')
+btn_damage = Button(ax_btn_damage,'Damage Map (ON)',color='#dcdcdc',hovercolor='#c0c0c0')
+btn_rings = Button(ax_btn_rings,'Impact Rings (ON)',color='#dcdcdc',hovercolor='#c0c0c0')
 
 # ----------------------- State -----------------------
 show_ash, show_damage, show_impact = True, True, True
@@ -127,8 +127,7 @@ ash_artist = ax_map.imshow(np.zeros_like(XX), extent=[x_min,x_max,y_min,y_max], 
 volcano_marker, = ax_map.plot(volcano_x,volcano_y,'^',markersize=16, markerfacecolor=settings["colors"][1], markeredgecolor='white', zorder=6)
 info_text = ax_map.text(x_min+2, y_max-8, '', fontsize=10, color='black', bbox=dict(facecolor='white', alpha=0.95, boxstyle='round,pad=0.6', linewidth=1.2), zorder=7)
 impact_rings = [plt.Circle((volcano_x,volcano_y),1,color=settings["colors"][0], fill=False, linewidth=2.0, linestyle='--', alpha=0.55, zorder=2) for _ in settings["colors"]]
-for ring in impact_rings:
-    ax_map.add_patch(ring)
+for ring in impact_rings: ax_map.add_patch(ring)
 
 # ----------------------- Update Function -----------------------
 def update_plot():
@@ -150,29 +149,18 @@ def update_plot():
         ring.set_radius(r if show_impact and r>0 else 0)
         ring.set_edgecolor(settings["colors"][i])
     # Info
-    info_text.set_text(f"Alert Level {scale}: {settings['label']}\nRadius: {radius:.1f}/{max_radius} km\nWind: {slider_speed.val:.0f} km/h from {slider_dir.val:.0f}°\n{settings['desc']}")
+    info_text.set_text(
+        f"Alert Level {scale}: {settings['label']}\n"
+        f"Radius: {radius:.1f}/{max_radius} km\n"
+        f"Wind: {slider_speed.val:.0f} km/h from {slider_dir.val:.0f}°\n"
+        f"Possible Earthquake Magnitude: {settings['eq_mag_str']}\n"
+        f"{settings['desc']}"
+    )
     fig.canvas.draw_idle()
-
-# ----------------------- Button Toggle Helper -----------------------
-def toggle_button(btn, state_var_name):
-    global show_ash, show_damage, show_impact
-    if state_var_name == "ash":
-        show_ash = not show_ash
-        current_state = show_ash
-    elif state_var_name == "damage":
-        show_damage = not show_damage
-        current_state = show_damage
-    elif state_var_name == "impact":
-        show_impact = not show_impact
-        current_state = show_impact
-    else:
-        return
-    # Update label
-    label_base = btn.label.get_text().split(" ")[0]
-    btn.label.set_text(f"{label_base} ({'ON' if current_state else 'OFF'})")
-    # Update color
-    btn.ax.set_facecolor('#90ee90' if current_state else '#dcdcdc')
-    update_plot()
+    # Update button labels ON/OFF
+    btn_ash.label.set_text(f"Ash Plume ({'ON' if show_ash else 'OFF'})")
+    btn_damage.label.set_text(f"Damage Map ({'ON' if show_damage else 'OFF'})")
+    btn_rings.label.set_text(f"Impact Rings ({'ON' if show_impact else 'OFF'})")
 
 # ----------------------- Callbacks -----------------------
 def on_alert(label):
@@ -180,7 +168,6 @@ def on_alert(label):
     scale = int(label.split(":")[0])
     radius = 0.1
     update_plot()
-
 def reset(event):
     global radius, show_ash, show_damage, show_impact
     radius = 0.1
@@ -188,13 +175,18 @@ def reset(event):
     slider_speed.set_val(10)
     slider_dir.set_val(90)
     slider_ash.set_val(1.0)
-    # reset button colors
-    btn_ash.ax.set_facecolor('#90ee90')
-    btn_damage.ax.set_facecolor('#90ee90')
-    btn_rings.ax.set_facecolor('#90ee90')
-    btn_ash.label.set_text('Ash Plume (ON)')
-    btn_damage.label.set_text('Damage Map (ON)')
-    btn_rings.label.set_text('Impact Rings (ON)')
+    update_plot()
+def toggle_ash(event):
+    global show_ash
+    show_ash = not show_ash
+    update_plot()
+def toggle_damage(event):
+    global show_damage
+    show_damage = not show_damage
+    update_plot()
+def toggle_rings(event):
+    global show_impact
+    show_impact = not show_impact
     update_plot()
 
 radio_alert.on_clicked(on_alert)
@@ -202,14 +194,15 @@ slider_speed.on_changed(lambda v: update_plot())
 slider_dir.on_changed(lambda v: update_plot())
 slider_ash.on_changed(lambda v: update_plot())
 btn_reset.on_clicked(reset)
-btn_ash.on_clicked(lambda event: toggle_button(btn_ash, "ash"))
-btn_damage.on_clicked(lambda event: toggle_button(btn_damage, "damage"))
-btn_rings.on_clicked(lambda event: toggle_button(btn_rings, "impact"))
+btn_ash.on_clicked(toggle_ash)
+btn_damage.on_clicked(toggle_damage)
+btn_rings.on_clicked(toggle_rings)
 
 # ----------------------- Animation Loop -----------------------
 update_plot()
 plt.show(block=False)
 while plt.fignum_exists(fig.number):
+    settings = ERUPTION_COLORS[scale]
     if scale>0 and radius<settings["max_radius"]:
         radius += settings["growth_rate"]*0.3
         radius = min(radius, settings["max_radius"])
