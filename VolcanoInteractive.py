@@ -61,37 +61,46 @@ def compute_damage_map(radius, scale, eq_mag_num, max_radius):
 def compute_ash_map(radius, wind_dir, wind_speed, max_radius):
     if radius <= 0 or max_radius <= 0:
         return np.zeros_like(dist_grid)
+
     ash_angle_deg = (wind_dir + 180) % 360
     ash_rad = np.deg2rad(ash_angle_deg)
     ux, uy = math.sin(ash_rad), math.cos(ash_rad)
     wind_factor = max(0.1, wind_speed / 10.0)
     parallel_sigma = max(1.0, (radius + 1.0) * 0.4 * wind_factor)
     perp_sigma = max(0.5, (radius + 1.0) * 0.25)
-    cx, cy = volcano_x + ux * radius * 0.45, volcano_y + uy * radius * 0.45
+
+    # ------------- FIX APPLIED HERE ---------------
+    # Ash now starts EXACTLY at the volcano triangle
+    cx, cy = volcano_x, volcano_y
+    # ----------------------------------------------
+
     RX, RY = XX - cx, YY - cy
     parallel = RX * ux + RY * uy
     perp = -RX * uy + RY * ux
+
     gauss = np.exp(-0.5 * ((parallel / parallel_sigma) ** 2 + (perp / perp_sigma) ** 2))
     gauss *= 1 / (1 + np.exp(-0.8 * parallel))
     radial_atten = np.exp(-dist_grid / max(1.0, max_radius / 3.0))
+
     ash = gauss * radial_atten
     ash /= np.max(ash) if np.max(ash) > 0 else 1
     ash *= np.clip((radius / max(1.0, max_radius)) * 1.2 + 0.05, 0, 1)
+    
     ash[dist_grid > max_radius * 1.5] = 0
     return ash
 
 # ----------------------- Figure & UI -----------------------
 plt.ion()
-fig = plt.figure(figsize=(12,10), facecolor='#a9a9a9')  # gray background
+fig = plt.figure(figsize=(12,10), facecolor='#a9a9a9')
 fig.suptitle("🌋 Taal Volcano Eruption Hazard Simulation", y=0.03, fontsize=16, fontweight='bold')
-ax_map = fig.add_axes([0.05,0.12,0.7,0.82], facecolor='#a9a9a9')  # gray background
+ax_map = fig.add_axes([0.05,0.12,0.7,0.82], facecolor='#a9a9a9')
 
 colors = ["#fef0d9","#fc8d59","#d7301f"]
 cmap_damage = LinearSegmentedColormap.from_list("DamageCmap", colors)
 ash_cmap = plt.get_cmap('Greys_r')
 
 # --- Controls ---
-control_bg = '#a9a9a9'  # match figure background
+control_bg = '#a9a9a9'
 ax_alert = fig.add_axes([0.78,0.80,0.2,0.15], facecolor=control_bg)
 ax_wind_speed = fig.add_axes([0.78,0.73,0.18,0.035], facecolor=control_bg)
 ax_wind_dir = fig.add_axes([0.78,0.68,0.18,0.035], facecolor=control_bg)
@@ -102,8 +111,6 @@ ax_btn_damage = fig.add_axes([0.78,0.42,0.18,0.045], facecolor=control_bg)
 ax_btn_rings = fig.add_axes([0.78,0.35,0.18,0.045], facecolor=control_bg)
 
 radio_alert = RadioButtons(ax_alert, [f"{i}: {ERUPTION_COLORS[i]['label']}" for i in range(5)], active=2)
-radio_alert.ax.set_facecolor(control_bg)
-
 slider_speed = Slider(ax_wind_speed, 'Wind Speed (km/h)', 0,50,valinit=10,valstep=1)
 slider_dir = Slider(ax_wind_dir, 'Wind Dir (°)', 0,360,valinit=90,valstep=1)
 slider_ash = Slider(ax_ash_strength,'Ash Scale',0.1,2.0,valinit=1.0)
@@ -157,6 +164,7 @@ def update_plot():
         f"{settings['desc']}"
     )
     fig.canvas.draw_idle()
+
     btn_ash.label.set_text(f"Ash Plume ({'ON' if show_ash else 'OFF'})")
     btn_damage.label.set_text(f"Damage Map ({'ON' if show_damage else 'OFF'})")
     btn_rings.label.set_text(f"Impact Rings ({'ON' if show_impact else 'OFF'})")
@@ -167,6 +175,7 @@ def on_alert(label):
     scale = int(label.split(":")[0])
     radius = 0.1
     update_plot()
+
 def reset(event):
     global radius, show_ash, show_damage, show_impact
     radius = 0.1
@@ -175,14 +184,17 @@ def reset(event):
     slider_dir.set_val(90)
     slider_ash.set_val(1.0)
     update_plot()
+
 def toggle_ash(event):
     global show_ash
     show_ash = not show_ash
     update_plot()
+
 def toggle_damage(event):
     global show_damage
     show_damage = not show_damage
     update_plot()
+
 def toggle_rings(event):
     global show_impact
     show_impact = not show_impact
@@ -200,6 +212,7 @@ btn_rings.on_clicked(toggle_rings)
 # ----------------------- Animation Loop -----------------------
 update_plot()
 plt.show(block=False)
+
 while plt.fignum_exists(fig.number):
     settings = ERUPTION_COLORS[scale]
     if scale>0 and radius<settings["max_radius"]:
@@ -207,5 +220,6 @@ while plt.fignum_exists(fig.number):
         radius = min(radius, settings["max_radius"])
     elif scale==0 and radius>0.1:
         radius = max(0.1,radius-0.5)
+
     update_plot()
     plt.pause(frame_dt)
