@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import math
+import math 
 from matplotlib.widgets import Button, Slider, RadioButtons
 from matplotlib.colors import LinearSegmentedColormap
 import matplotlib as mpl
@@ -223,3 +223,4 @@ while plt.fignum_exists(fig.number):
 
     update_plot()
     plt.pause(frame_dt)
+
