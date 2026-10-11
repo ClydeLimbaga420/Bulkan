@@ -1,4 +1,4 @@
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt 
 import numpy as np
 import math 
 from matplotlib.widgets import Button, Slider, RadioButtons
